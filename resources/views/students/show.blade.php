@@ -7,6 +7,10 @@
 <head>
     <meta charset="UTF-8">
     <title>学生詳細表示画面</title>
+    {{-- jQueryの読み込み --}}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    {{-- 成績検索用のJS --}}
+    <script src="{{ asset('js/grade-search.js') }}"></script>
 </head>
 
 <body>
@@ -62,73 +66,80 @@
 
     {{-- 成績表示エリア --}}
     <h3>成績検索</h3>
-    <form method="GET" action="{{ route('students.show', $student->id) }}" style="margin-bottom: 20px;">
-        <select name="search_grade">
+    <form method="GET" action="{{ route('students.show', $student->id) }}" id="grade-search-form" style="margin-bottom: 20px;">
+
+        <select name="search_grade" id="search-grade">
             <option value="">全ての学年</option>
             @for($i = 1; $i <= 3; $i++)
                 <option value="{{ $i }}" {{ request('search_grade') == $i ? 'selected' : '' }}>{{ $i }}年</option>
                 @endfor
         </select>
 
-        <select name="search_term">
+        <select name="search_term" id="search-term">
             <option value="">全ての学期</option>
             @for($i = 1; $i <= 3; $i++)
                 <option value="{{ $i }}" {{ request('search_term') == $i ? 'selected' : '' }}>{{ $i }}学期</option>
                 @endfor
         </select>
-        <button type="submit">検索</button>
+
+        <button type="button" id="ajax-grade-search-btn">検索</button>
         <a href="{{ route('students.show', $student->id) }}"><button type="button">クリア</button></a>
     </form>
 
     <h3>成績表示</h3>
-    @if($student->grades->isEmpty())
-    <p>成績が登録されていません。</p>
-    @else
-    <table border="1" style="border-collapse: collapse; width: 50%; text-align: center;">
-        <thead style="background-color: #f2f2f2;">
-            <tr>
-                <th style="padding: 10px;">年次</th>
-                <th style="padding: 10px;">学期</th>
-                @foreach($subjects as $displayName => $columnName)
-                <th>{{ $displayName }}</th>
+    {{-- id="grade-list" でテーブルを囲む --}}
+    <div id="grade-list">
+        @if($student->grades->isEmpty())
+        <p>成績が登録されていません。</p>
+        @else
+        <table border="1" style="border-collapse: collapse; width: 50%; text-align: center;">
+            <thead style="background-color: #f2f2f2;">
+                <tr>
+                    <th style="padding: 10px;">年次</th>
+                    <th style="padding: 10px;">学期</th>
+                    @foreach($subjects as $displayName => $columnName)
+                    <th>{{ $displayName }}</th>
+                    @endforeach
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach($grades as $grade)
+                <tr>
+                    <td style="padding: 8px;">{{ $grade->grade }}年</td>
+                    <td>{{ $grade->term }}学期</td>
+                    @foreach($subjects as $displayName => $columnName)
+                    <td>{{ $grade->$columnName ?? '-' }}</td>
+                    @endforeach
+
+                    <td>
+                        {{-- flexのgapを10pxに広げ、中央揃え(center)に設定します --}}
+                        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 5px;">
+
+                            {{-- 成績編集ボタン --}}
+                            <a href="{{ route('grades.edit', ['student' => $student->id, 'id' => $grade->id]) }}" style="text-decoration: none;">
+                                <button type="button" style="cursor: pointer; padding: 5px 10px;">成績編集</button>
+                            </a>
+
+                            {{-- 削除ボタン --}}
+                            <form action="{{ route('grades.destroy', $student->id) }}" method="POST" onsubmit="return confirm('本当に削除しますか？');" style="margin: 0;">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="id" value="{{ $grade->id }}">
+                                <button type="submit" style="background-color: #ff4d4d; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 3px;">
+                                    削除
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
                 @endforeach
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($grades as $grade)
-            <tr>
-                <td style="padding: 8px;">{{ $grade->grade }}年</td>
-                <td>{{ $grade->term }}学期</td>
-                @foreach($subjects as $displayName => $columnName)
-                <td>{{ $grade->$columnName ?? '-' }}</td>
-                @endforeach
-                <td>
-                    {{-- flexのgapを10pxに広げ、中央揃え(center)に設定します --}}
-                    <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 5px;">
+            </tbody>
+        </table>
+        @endif
+    </div>
 
-                        {{-- 成績編集ボタン --}}
-                        <a href="{{ route('grades.edit', ['student' => $student->id, 'id' => $grade->id]) }}" style="text-decoration: none;">
-                            <button type="button" style="cursor: pointer; padding: 5px 10px;">成績編集</button>
-                        </a>
-
-                        {{-- 削除ボタン --}}
-                        <form action="{{ route('grades.destroy', $student->id) }}" method="POST" onsubmit="return confirm('本当に削除しますか？');" style="margin: 0;">
-                            @csrf
-                            @method('DELETE')
-                            <input type="hidden" name="id" value="{{ $grade->id }}">
-                            <button type="submit" style="background-color: #ff4d4d; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 3px;">
-                                削除
-                            </button>
-                        </form>
-
-                    </div>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-    @endif
 
     {{-- 下部ボタン --}}
     <div style="margin-top: 20px; display: flex; gap: 10px;">
